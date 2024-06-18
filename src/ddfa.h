@@ -1,7 +1,8 @@
 #ifndef __DDFA_DDFA_H__
 #define __DDFA_DDFA_H__
 
-#include <libunwind.h>
+//#include <libunwind.h>
+#include <stddef.h>
 
 typedef enum data_type {
 	DATA_TYPE_char,
@@ -44,7 +45,7 @@ typedef struct call {
 	unsigned int count; //The call count in this call path
 	int tid; //The thread id
 	volatile struct call * child; //callee
-	struct call * next; //The link list for the children (callees)
+	volatile struct call * next; //The link list for the children (callees)
 } call_t;
 
 /**
@@ -87,11 +88,12 @@ data_t * init_data(char *symbol, void *addr, size_t size, access_kind_t akind, i
 data_map_t * init_map_data(data_t * src, map_type_t mtype, char * symbol, void * addr, size_t size, access_kind_t akind, int devID);
 data_map_t * map_data(data_t * src, data_t * dest, map_type_t mtype);
 
-extern __thread thread_id;
-extern __thread data_buffer[];
-extern __thread num_data;
-extern __thread data_map_buffer[];
-extern __thread num_maps;
+extern __thread int thread_id;
+extern __thread int call_depth;
+extern __thread data_t data_buffer[];
+extern __thread int num_data;
+extern __thread data_map_t data_map_buffer[];
+extern __thread int num_maps;
 extern symbol_t sym_table[];
 
 /**
@@ -116,6 +118,17 @@ void trace_mem(char * symbol, void * addr, size_t size, data_type_t type, access
  */
 void ddf_trace_start(char * callerName, char * funcName, int numsyms, ...) {
 }
+
+
+void __cyg_profile_func_enter(void *this_fn, void *call_site)
+                              __attribute__((no_instrument_function));
+
+
+void __cyg_profile_func_exit(void *this_fn, void *call_site)
+                             __attribute__((no_instrument_function));
+
+void before_main (void) __attribute__((constructor));
+void after_main (void) __attribute__((destructor));
 
 #endif
 
