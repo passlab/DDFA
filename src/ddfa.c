@@ -3,14 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define DATA_BUFFER_SIZE 256
 #define DATA_MAP_BUFFER_SIZE 256
 #define SYMBOL_TABLE_SIZE 128
 #define CALL_OBJECT_BUFFER_SIZE 256
 
 __thread int thread_id;
-__thread data_t data_buffer[DATA_BUFFER_SIZE];
-__thread int num_data;
 __thread data_map_t data_map_buffer[DATA_MAP_BUFFER_SIZE];
 __thread int num_maps;
 __thread volatile call_t * top; //The top of call stack of this thread
@@ -40,7 +37,8 @@ call_t * add_new_call_node(call_t * parent, void * func, void * call_site) {
 }
 
 /**
- * The function attach the current call path to the cactus stack
+ * The function attach the current call path to the cactus stack. This scenario is for the situation that
+ * not every function call are automatically traced.
  */
 call_t * attach_callpath(call_t * root) {
 	void * callpath[MAX_CALLPATH_DEPTH];
@@ -64,7 +62,7 @@ call_t * attach_callpath(call_t * root) {
 		}
 	}
 	if (i>=0) { //build the rest of the nodes in the callpath
-		for (; i>=0; i++) {
+		for (; i>=0; i--) {
 			ntop = add_new_call_node(ntop, NULL, callpath[i]);
 		}
 	}
@@ -76,17 +74,24 @@ void retrieve_callpath(callpath_key_t * cpk) {
   cpk->depth = backtrace (cpk->callpath, MAX_CALLPATH_DEPTH);
 }
 
-data_t * init_data(char *symbol, void *addr, size_t size, access_kind_t akind, int devId) {
-	callpath_key_t callpath_key;
-	data_t * data = &data_buffer[num_data]; num_data++;
-	data->symbol = symbol;
-	data->addr = addr;
-	data->size = size;
-	data->akind = akind;
-	data->devId = devId;
+data_map_t * map_data(data_map_t * src, map_type_t mtype, char * symbol, void * addr, size_t size, access_kind_t akind, int devId) {
+	data_map_t * map = &data_map_buffer[num_maps]; num_maps++;
+	map->symbol = symbol;
+	map->addr = addr;
+	map->size = size;
+	map->akind = akind;
+	map->devId = devId;
+
+	map->src = src;
+	map->mtype = mtype;
+	//callpath_key_t callpath_key;
+
+	//attach the map to the call graph
+
+	//Assume top is the function that makes this map
+	map->next = top->data_maps;
+	top->data_maps = map; //XXX: Is there data racing in this situation??
 }
-data_map_t * init_map_data(data_t * src, map_type_t mtype, char * symbol, void * addr, size_t size, access_kind_t akind, int devID);
-data_map_t * map_data(data_t * src, data_t * dest, map_type_t mtype);
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) {
   //Search the callee of the current parent to see whether this is called before
@@ -134,7 +139,13 @@ void before_main (void) {
 	root->parent = NULL;
 	root->tid = thread_id;
 	root->child = NULL;
+	root->data_maps = NULL;
 	top = root;
 	call_depth = 0;
     printf("**ROOT node for main created: %p, calling from %p**\n", &main, &before_main);
+}
+
+void after_main(void ) {
+//We can implement the printout of DOT/GraphML graph here
+
 }

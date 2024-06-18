@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include "ddfa.h"
 
 int mul(int a, int b) {
+	//attach_callpath(root);
 	return a*b;
 }
 
@@ -12,6 +14,8 @@ void square(int num) {
 
 int main() {
 	int i;
-	for (i=0; i<3; i++) square(5);  // Output: 25
+	for (i=0; i<3; i++) {
+		square(5);  // Output: 25
+	}
     return 0;
 }
