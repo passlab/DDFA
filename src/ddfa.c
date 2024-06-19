@@ -74,62 +74,81 @@ void retrieve_callpath(callpath_key_t * cpk) {
   cpk->depth = backtrace (cpk->callpath, MAX_CALLPATH_DEPTH);
 }
 
-data_map_t * map_data(data_map_t * src, map_type_t mtype, char * symbol, void * addr, size_t size, access_kind_t akind, int devId) {
+data_map_t * map_data(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size,
+		access_kind_t accessKind, mem_type_t memType, int devId) {
 	data_map_t * map = &data_map_buffer[num_maps]; num_maps++;
 	map->symbol = symbol;
 	map->addr = addr;
 	map->size = size;
-	map->akind = akind;
+	map->accessKind = accessKind;
 	map->devId = devId;
+	map->memType = memType;
 
 	map->src = src;
-	map->mtype = mtype;
+	map->mapType = mapType;
 	//callpath_key_t callpath_key;
 
+	//attach_callpath(root);
 	//attach the map to the call graph
-
 	//Assume top is the function that makes this map
 	map->next = top->data_maps;
 	top->data_maps = map; //XXX: Is there data racing in this situation??
 }
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) {
-  //Search the callee of the current parent to see whether this is called before
-  call_t * temp = top->child;
-  while (temp != NULL) {
-	  if (temp->func == this_fn && temp->call_site == call_site && temp->tid == thread_id) {
-		  break;
+  //we can bootstrap here to create the very first node for call to main
+  if (top == NULL) {
+	 //assert root == NULL, and this_fn == &main
+	  root  = &call_buffer[num_calls]; num_calls++; //use an object from buffer
+	  root->count = 1;
+	  root->func = this_fn;
+	  root->call_site = call_site;
+	  root->parent = NULL;
+	  root->tid = thread_id;
+	  root->child = NULL;
+	  root->data_maps = NULL;
+	  top = root;
+	  call_depth = 0;
+	  printf("**ROOT node %p created for calling main: %p, from %p\n", root, this_fn, call_site);
+  } else {
+	  call_depth ++;
+	  //Search the callee of the current parent to see whether this is called before
+	  call_t * temp = top->child;
+	  while (temp != NULL) {
+		  if (temp->func == this_fn && temp->call_site == call_site && temp->tid == thread_id) {
+			 break;
+		  }
 	  }
+	  if (temp == NULL) {
+		  temp = add_new_call_node(top, this_fn, call_site);
+		  //for pretty print
+		  int i;
+		  for (i=0; i<call_depth; i++) printf("  ");
+		  printf("**new call node/path %p created for calling: %p, from %p\n", temp, this_fn, call_site);
+	  }
+	  temp->count ++;
+	  top = temp;
   }
-  if (temp == NULL) {
-	  temp = add_new_call_node(top, this_fn, call_site);
-	  //for pretty print
-	  int i;
-	  for (i=0; i<call_depth; i++) printf("  ");
-	  printf("**new call node/path %p created for calling: %p, from %p\n", temp, this_fn, call_site);
-  }
-  temp->count ++;
   //for pretty print
   int i;
   for (i=0; i<call_depth; i++) printf("  ");
-  printf("==> Call node/path %p entered %d times for calling: %p, from %p\n", temp, temp->count, this_fn, call_site);
-  top = temp;
-  call_depth ++;
+  printf("==> Call node/path %p entered %d times for calling: %p, from %p\n", top, top->count, this_fn, call_site);
 
 } /* __cyg_profile_func_enter */
 
 void __cyg_profile_func_exit(void *this_fn, void *call_site) {
-  call_depth --;
   //for pretty print
   int i;
   for (i=0; i<call_depth; i++) printf("  ");
   printf("<== Call node/path %p exits for calling: %p, from %p, new top: %p\n", top, this_fn, call_site, top->parent);
 
+  call_depth --;
   top = top->parent;
 } /* __cyg_profile_func_enter */
 
-int main(int argc, char * argv);
-void before_main (void) {
+extern int main(int argc, char * argv);
+
+void before_main () {
 	//root = add_new_call_node(NULL, &main, &before_main);
 
 	root  = &call_buffer[num_calls]; num_calls++; //use an object from buffer
@@ -142,10 +161,10 @@ void before_main (void) {
 	root->data_maps = NULL;
 	top = root;
 	call_depth = 0;
-    printf("**ROOT node for main created: %p, calling from %p**\n", &main, &before_main);
+    printf("**ORIGIN node for the program created, get ready for calling main %p, this func is constructor before_main %p**\n", &main, &before_main);
 }
 
-void after_main(void ) {
+void after_main() {
 //We can implement the printout of DOT/GraphML graph here
 
 }

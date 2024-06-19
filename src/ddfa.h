@@ -25,8 +25,16 @@ typedef enum map_type {
 	MAP_TYPE_COPY,
 	MAP_TYPE_SHARED,
 	MAP_TYPE_VSHARED,
-	MAP_TYPE_FUNCOPY, //Function call, copy
+	MAP_TYPE_FUNCARGCOPY, //Function call, copy
+	MAP_TYPE_INIT_CONST, //_INIT_* type are for the first time creation of a data element
 } map_type_t;
+
+typedef enum mem_type {
+	MEM_TYPE_HOSTMEM,
+	MEM_TYPE_ACCMEM,
+	MEM_TYPE_STORAGE,
+	MEM_TYPE_IO,
+} mem_type_t;
 
 #define MAX_CALLPATH_DEPTH 32
 //This is used a key to uniquely identify a data or a data map
@@ -51,10 +59,11 @@ typedef struct data_map {
 	char * symbol;
 	void * addr; //The memory address
 	size_t size;
-	access_kind_t akind;
+	access_kind_t accessKind;
+	mem_type_t memType;
 	int devId; //heterogeneous device id, -1 for CPU/host memory
 	callpath_key_t key;
-	map_type_t mtype;
+	map_type_t mapType;
 	struct data_map *src; //If mtype is shared or vshared, src points to the source data_map.
 
 	struct data_map * next; //The link list of maps of a function
@@ -77,7 +86,7 @@ typedef struct call {
 /**
  *
  */
-data_map_t * map_data(data_map_t * src, map_type_t mtype, char * symbol, void * addr, size_t size, access_kind_t akind, int devId);
+data_map_t * map_data(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, access_kind_t accessKind, mem_type_t memType, int devId);
 call_t * attach_callpath(call_t * root) ;
 
 extern __thread int thread_id;
@@ -107,7 +116,6 @@ void trace_mem(char * symbol, void * addr, size_t size, data_type_t type, access
  */
 void ddf_trace_start(char * callerName, char * funcName, int numsyms, ...);
 
-
 void __cyg_profile_func_enter(void *this_fn, void *call_site)
                               __attribute__((no_instrument_function));
 
@@ -115,8 +123,10 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 void __cyg_profile_func_exit(void *this_fn, void *call_site)
                              __attribute__((no_instrument_function));
 
-void before_main (void) __attribute__((constructor));
-void after_main (void) __attribute__((destructor));
+//Not using the constructor now
+//void before_main () __attribute__((constructor));
+void before_main () ;
+void after_main () __attribute__((destructor));
 
 #endif
 
