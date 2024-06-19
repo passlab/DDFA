@@ -87,7 +87,7 @@ typedef struct call {
  *
  */
 data_map_t * map_data(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, access_kind_t accessKind, mem_type_t memType, int devId);
-call_t * attach_callpath(call_t * root) ;
+call_t * attach_callpath(call_t * root, int runtime_depth) ;
 
 extern __thread int thread_id;
 extern __thread int call_depth;

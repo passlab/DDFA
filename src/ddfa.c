@@ -39,16 +39,29 @@ call_t * add_new_call_node(call_t * parent, void * func, void * call_site) {
 /**
  * The function attach the current call path to the cactus stack. This scenario is for the situation that
  * not every function call are automatically traced.
+ *
+ * @param root: the root node of the callpath
+ * @param runtime_depth: the call path depth from the user code to this point. E.g. If the
+ *                       user code call this func, runtime_depth is 1. If user code call another
+ *                       func, e.g. map_data, which then call this func, runtime_depth is 2
  */
-call_t * attach_callpath(call_t * root) {
+call_t * attach_callpath(call_t * root, int runtime_depth) {
 	void * callpath[MAX_CALLPATH_DEPTH];
+
+	//runtime_depth as the index to the backtrace return
+	//should be the call_site of the top node of the user callgraph
 	int depth = backtrace (callpath, MAX_CALLPATH_DEPTH);
 	int i;
 	//assert to make sure the root->call_site is the same as the deepest of backtrace
-	if (root->call_site != callpath[depth-1]) { //might be different level depending on the ABI/libc
+
+	//3 because of libc calling convention: _start+32 ==> __libc_start_main_impl+128 ==> __libc_start_call_main+128 ==> main
+    //might be different level depending on the ABI/libc
+	int libc_calldepth = 3;
+
+	if (root->call_site != callpath[depth-libc_calldepth]) {
 	}
 	call_t * ntop = root;
-	for (i = depth - 2; i>=0; i--) {
+	for (i = depth - libc_calldepth-1; i>=0; i--) {
 		void * ip = callpath[i];
 		call_t * child = ntop->child;
 		while (child != NULL && child != ip) {
@@ -63,10 +76,10 @@ call_t * attach_callpath(call_t * root) {
 	}
 	if (i>=0) { //build the rest of the nodes in the callpath
 		for (; i>=0; i--) {
-			ntop = add_new_call_node(ntop, NULL, callpath[i]);
+			//ntop = add_new_call_node(ntop, NULL, callpath[i]);
 		}
 	}
-	top = ntop;
+	//top = ntop;
 }
 
 void retrieve_callpath(callpath_key_t * cpk) {
@@ -88,7 +101,8 @@ data_map_t * map_data(data_map_t * src, map_type_t mapType, char * symbol, void 
 	map->mapType = mapType;
 	//callpath_key_t callpath_key;
 
-	//attach_callpath(root);
+	attach_callpath(root, 2);
+
 	//attach the map to the call graph
 	//Assume top is the function that makes this map
 	map->next = top->data_maps;
