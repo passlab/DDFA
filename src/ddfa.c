@@ -3,6 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef USING_LIBUNWIND
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+#endif
+
 #define DATA_MAP_BUFFER_SIZE 256
 #define SYMBOL_TABLE_SIZE 128
 #define CALL_OBJECT_BUFFER_SIZE 256
@@ -46,40 +51,69 @@ call_t * add_new_call_node(call_t * parent, void * func, void * call_site) {
  *                       func, e.g. map_data, which then call this func, runtime_depth is 2
  */
 call_t * attach_callpath(call_t * root, int runtime_depth) {
-	void * callpath[MAX_CALLPATH_DEPTH];
+	void * call_site[MAX_CALLPATH_DEPTH];
+	void * func[MAX_CALLPATH_DEPTH];
 
 	//runtime_depth as the index to the backtrace return
 	//should be the call_site of the top node of the user callgraph
-	int depth = backtrace (callpath, MAX_CALLPATH_DEPTH);
-	int i;
+	int depth = backtrace (call_site, MAX_CALLPATH_DEPTH);
 	//assert to make sure the root->call_site is the same as the deepest of backtrace
 
 	//3 because of libc calling convention: _start+32 ==> __libc_start_main_impl+128 ==> __libc_start_call_main+128 ==> main
     //might be different level depending on the ABI/libc
-	int libc_calldepth = 3;
+	//int libc_calldepth = 3;
 
-	if (root->call_site != callpath[depth-libc_calldepth]) {
-	}
+	int i = depth - 1;
+	//the call_site of the address of the caller that makes the call
+	//This search finds the main function in the callpath
+	while (root->call_site != call_site[i]) i--;
+
+	i--; //i now is the index of the callpath that has the first call from main
+
+#ifdef USING_LIBUNWIND
+    unw_cursor_t cursor; unw_context_t uc;
+    unw_proc_info_t func_info;
+    unw_word_t ip;
+
+    unw_getcontext(&uc);
+    unw_init_local(&cursor, &uc);
+    int j = 0;
+    while (unw_step(&cursor) > 0 && j <= runtime_depth); //ignore runtime calls
+
+    while (unw_step(&cursor) > 0) {
+      unw_get_reg(&cursor, UNW_REG_IP, &ip);
+      unw_get_proc_info(&cursor, &func_info);
+      printf ("call_site = %lx, func = %lx\n", (long) ip, (long) func_info.start_ip);
+      call_site[j] = (void *) ip;
+      func[j] = (void *) func_info.start_ip;
+      j++;
+    }
+#endif
+
 	call_t * ntop = root;
-	for (i = depth - libc_calldepth-1; i>=0; i--) {
-		void * ip = callpath[i];
+	for ( ; i>=0; i--) {
+		void * ip = call_site[i];
 		call_t * child = ntop->child;
-		while (child != NULL && child != ip) {
-			child = child->next;
+		while (child != NULL) {
+			if (child->call_site == ip) {
+				ntop = child; //The callee is already in the call graph, move on to the next level
+				break;
+			} else {
+				child = child->next; //search the callees to find the matching node
+			}
 		}
-		if (child == ip) {
-			ntop = child; //find the associated call node, continue the next one
-		} else { //we need to break since from now on, we need to build all the call nodes in
-			     //the rest of the callpath
+		if (child == NULL) {
+			//No child matching the call, this call has not been in the call graph,
+			//Thus we need to build the graph from this point (ntop)
 			break;
 		}
 	}
-	if (i>=0) { //build the rest of the nodes in the callpath
-		for (; i>=0; i--) {
-			//ntop = add_new_call_node(ntop, NULL, callpath[i]);
-		}
+	for (; i > runtime_depth; i--) {
+		//build the rest of the nodes in the callpath
+		//We do not have func info for the callee
+		ntop = add_new_call_node(ntop, NULL, call_site[i]);
 	}
-	//top = ntop;
+	top = ntop;
 }
 
 void retrieve_callpath(callpath_key_t * cpk) {

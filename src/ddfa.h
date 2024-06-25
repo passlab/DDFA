@@ -73,7 +73,7 @@ typedef char * symbol_t;
 
 typedef struct call {
 	void * func;
-	void * call_site;
+	void * call_site; //call_site is the address of the caller that makes call to this func
 	void * parent;
 	unsigned int count; //The call count in this call path
 	int tid; //The thread id
