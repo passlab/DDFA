@@ -12,7 +12,7 @@
 #define SYMBOL_TABLE_SIZE 128
 #define CALL_OBJECT_BUFFER_SIZE 256
 
-__thread int thread_id;
+__thread int thread_id = 0;
 __thread data_map_t data_map_buffer[DATA_MAP_BUFFER_SIZE];
 __thread int num_maps;
 __thread volatile call_t * top; //The top of call stack of this thread
@@ -136,6 +136,7 @@ data_map_t * map_data(data_map_t * src, map_type_t mapType, char * symbol, void 
 	//callpath_key_t callpath_key;
 
 	attach_callpath(root, 2);
+	//attach the call path to the call graph
 
 	//attach the map to the call graph
 	//Assume top is the function that makes this map
@@ -166,6 +167,7 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site) {
 		  if (temp->func == this_fn && temp->call_site == call_site && temp->tid == thread_id) {
 			 break;
 		  }
+		  temp = temp->next;
 	  }
 	  if (temp == NULL) {
 		  temp = add_new_call_node(top, this_fn, call_site);
