@@ -144,47 +144,99 @@ data_map_t * map_data(data_map_t * src, map_type_t mapType, char * symbol, void 
 	top->data_maps = map; //XXX: Is there data racing in this situation??
 }
 
-void __cyg_profile_func_enter(void *this_fn, void *call_site) {
-  //we can bootstrap here to create the very first node for call to main
-  if (top == NULL) {
-	 //assert root == NULL, and this_fn == &main
-	  root  = &call_buffer[num_calls]; num_calls++; //use an object from buffer
-	  root->count = 1;
-	  root->func = this_fn;
-	  root->call_site = call_site;
-	  root->parent = NULL;
-	  root->tid = thread_id;
-	  root->child = NULL;
-	  root->data_maps = NULL;
-	  top = root;
-	  call_depth = 0;
-	  printf("**ROOT node %p created for calling main: %p, from %p\n", root, this_fn, call_site);
-  } else {
-	  call_depth ++;
-	  //Search the callee of the current parent to see whether this is called before
-	  call_t * temp = top->child;
-	  while (temp != NULL) {
-		  if (temp->func == this_fn && temp->call_site == call_site && temp->tid == thread_id) {
-			 break;
-		  }
-		  temp = temp->next;
-	  }
-	  if (temp == NULL) {
-		  temp = add_new_call_node(top, this_fn, call_site);
-		  //for pretty print
-		  int i;
-		  for (i=0; i<call_depth; i++) printf("  ");
-		  printf("**new call node/path %p created for calling: %p, from %p\n", temp, this_fn, call_site);
-	  }
-	  temp->count ++;
-	  top = temp;
+// remove and return first item, move up all other items
+// needs manual deincrement of end
+call_t *dequeue(call_t *queue[], int end) {
+  if (end > 0) {
+    call_t *item = queue[0];
+    for (int x = 0; x < end; x++) {
+      queue[x] = queue[x + 1];
+    }
+    // clear last item
+    queue[end - 1] = NULL;
+    return item;
   }
-  //for pretty print
+  return NULL;
+}
+// add item at first empty slot
+// needs manual increment of end
+void enqueue(int end, call_t *queue[], call_t *node) { queue[end] = node; }
+
+void __cyg_profile_func_enter(void *this_fn, void *call_site) {
+  // we can bootstrap here to create the very first node for call to main
+  if (top == NULL) {
+    // assert root == NULL, and this_fn == &main
+    root = &call_buffer[num_calls];
+    num_calls++; // use an object from buffer
+    root->count = 1;
+    root->func = this_fn;
+    root->call_site = call_site;
+    root->parent = NULL;
+    root->tid = thread_id;
+    root->child = NULL;
+    root->data_maps = NULL;
+    top = root;
+    call_depth = 0;
+    printf("**ROOT node %p created for calling main: %p, from %p\n", root,
+           this_fn, call_site);
+  } else {
+    call_depth++;
+    //top is current parent node of entered funct, location in call stack
+    //global var updated at each entry and exit
+
+    // Search entire callstack starting from root
+    call_t *parent = root;
+    call_t *child;
+
+    //arbitrary size
+    call_t *queue[20] = {NULL};
+    int end = 0;
+    int found = 0; // flag to indicate whether we found the matching node
+
+    enqueue(end, queue, parent);
+    end++;
+
+    while ((parent = dequeue(queue, end)) != NULL && !found) {
+      end--;
+      child = parent->child;
+
+      while (child != NULL) {
+        //compare to child, break if match
+        //child pointer remains at matching child
+        if (child->func == this_fn && child->call_site == call_site && child->tid == thread_id) {
+
+          found = 1;
+          break;
+        }
+        // push the child node to the queue, if still not found
+        enqueue(end, queue, child);
+        end++;
+        child = child->next;
+      }
+    }
+    //No match found, create a new node
+    if (child == NULL) {
+      child = add_new_call_node(top, this_fn, call_site);
+      // for pretty print
+      int i;
+      for (i = 0; i < call_depth; i++) printf("  ");
+      printf("**new call node/path %p created for calling: %p, from %p\n", child,
+             this_fn, call_site);
+    }
+    //count incrments regardless of whether we found a match
+    child->count++;
+    top = child;
+  }
+  // for pretty print
+  //top is now the matching child node or a new node
   int i;
-  for (i=0; i<call_depth; i++) printf("  ");
-  printf("==> Call node/path %p entered %d times for calling: %p, from %p\n", top, top->count, this_fn, call_site);
+  for (i = 0; i < call_depth; i++)
+    printf("  ");
+  printf("==> Call node/path %p entered %d times for calling: %p, from %p\n",
+         top, top->count, this_fn, call_site);
 
 } /* __cyg_profile_func_enter */
+
 
 void __cyg_profile_func_exit(void *this_fn, void *call_site) {
   //for pretty print
@@ -214,7 +266,66 @@ void before_main () {
     printf("**ORIGIN node for the program created, get ready for calling main %p, this func is constructor before_main %p**\n", &main, &before_main);
 }
 
-void after_main() {
-//We can implement the printout of DOT/GraphML graph here
 
+void printnode(call_t *node){
+  if (node==root){
+    printf("\nROOTNODE is %p\n", root);
+  } else{
+    printf("\nNODEPATH is %p\n", node);
+  }
+  printf("\tCALLS FUNC %p\n", node->func);
+  printf("\t%d times\n", node->count);
+  printf("\tFROM CALLSITE: %p\n", node->call_site);
+  printf("\tPARENT --> CHILD NODE: %p -> %p\n", node->parent, node->child);
+  printf("\tNEXT: %p\n", node->next);
+}
+
+void after_main() {
+  // // DOT/GraphML implementation
+  call_t *parent;
+  call_t *child;
+
+  // Size is currently some arbitrary number that is big enough
+  call_t *queue[30] = {NULL};
+  int end = 0;
+
+  enqueue(end, queue, root);
+  end++;
+
+   FILE *fp = fopen("graph.dot", "w");
+   fprintf(fp, "digraph callgraph {\n");
+
+  // Add main to dot graph
+   fprintf(fp, "_%p;\n", root->func);
+
+  printnode(root);
+
+  while ((parent = dequeue(queue, end)) != NULL) {
+
+    end--;
+
+    child = parent->child;
+    while (child != NULL) {
+      // create graph node for the child
+      // Node names can't start w/nums
+      printnode(child);
+      // Add child node
+      // TODO add if child has not been added before
+       fprintf(fp, "_%p;\n", child->func);
+      // add connection to parent
+       fprintf(fp, "_%p -> _%p [label=\" calls: %d, callsite: %p\"];\n",
+       parent->func, child->func, child->count, child->call_site);
+
+      // push the child node to the queue
+      enqueue(end, queue, child);
+      end++;
+      child = child->next;
+    }
+  }
+
+   fprintf(fp, "}\n");
+   fclose(fp);
+
+  // Create the png from dot in terminal
+  // dot -T png graph.dot -o graph.png
 }
