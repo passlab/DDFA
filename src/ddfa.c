@@ -1,6 +1,7 @@
 #include "ddfa.h"
 #include <execinfo.h>
 #include <omp.h>
+//extern int omp_get_thread_num();
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -82,26 +83,24 @@ call_t *attach_callpath(call_t *root, int runtime_depth) {
   i--; // i now is the index of the callpath that has the first call from main
 
 #ifdef USING_LIBUNWIND
-  unw_cursor_t cursor;
-  unw_context_t uc;
-  unw_proc_info_t func_info;
-  unw_word_t ip;
+    unw_cursor_t cursor; unw_context_t uc;
+    unw_proc_info_t func_info;
+    unw_word_t ip;
 
-  unw_getcontext(&uc);
-  unw_init_local(&cursor, &uc);
-  int j = 0;
-  while (unw_step(&cursor) > 0 && j <= runtime_depth)
-    ; // ignore runtime calls
+    unw_getcontext(&uc);
+    unw_init_local(&cursor, &uc);
+    int j = 0;
+    while (unw_step(&cursor) > 0 && j <= runtime_depth) j++; //ignore runtime calls
 
-  while (unw_step(&cursor) > 0) {
-    unw_get_reg(&cursor, UNW_REG_IP, &ip);
-    unw_get_proc_info(&cursor, &func_info);
-    // printf ("call_site = %lx, func = %lx\n", (long) ip, (long)
-    // func_info.start_ip);
-    call_site[j] = (void *)ip;
-    func[j] = (void *)func_info.start_ip;
-    j++;
-  }
+    while (unw_step(&cursor) > 0) {
+      unw_get_reg(&cursor, UNW_REG_IP, &ip);
+      unw_get_proc_info(&cursor, &func_info);
+      printf ("call_site = %lx, func = %lx\n", (long) ip, (long) func_info.start_ip);
+      if (func_info.start_ip == root.func) //search till the main func
+      call_site[j] = (void *) ip;
+      func[j] = (void *) func_info.start_ip;
+      j++;
+    }
 #endif
 
   call_t *ntop = root;
@@ -179,6 +178,20 @@ call_t *dequeue(call_t *queue[], int end) {
 // needs manual increment of end
 void enqueue(int end, call_t *queue[], call_t *node) { queue[end] = node; }
 
+data_map_t * init_callarg_meta(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, void * func) {
+	data_map_t * temp = map_data(src, mapType, symbol, addr, size, ACCESS_KIND_READ_ONLY, MEM_TYPE_HOSTMEM, 0);
+
+	top->next_callarg_meta = temp;
+	temp->argnext = NULL;
+}
+
+data_map_t * add_callarg_meta(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, void * func) {
+	data_map_t * temp = map_data(src, mapType, symbol, addr, size, ACCESS_KIND_READ_ONLY, MEM_TYPE_HOSTMEM, 0);
+
+	temp->argnext = top->next_callarg_meta;
+	top->next_callarg_meta = temp;
+}
+
 void __cyg_profile_func_enter(void *this_fn, void *call_site) {
   // we can bootstrap here to create the very first node for call to main
   if (root == NULL) {
@@ -205,8 +218,6 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site) {
   } else {
     if (top == NULL) 
     top = root;
-  
-  
     
     call_depth++;
     // Search the callee of the current parent to see whether this is called
@@ -249,7 +260,7 @@ void __cyg_profile_func_exit(void *this_fn, void *call_site) {
   top = top->parent;
 } /* __cyg_profile_func_enter */
 
-extern int main(int argc, char *argv);
+extern int main(int argc, char *argv[]);
 
 void before_main() {
   // root = add_new_call_node(NULL, &main, &before_main);
