@@ -29,6 +29,14 @@ typedef enum map_type {
 	MAP_TYPE_INIT_CONST, //_INIT_* type are for the first time creation of a data element
 } map_type_t;
 
+/**
+ * For specifying the kind of mapping, e.g. per call or per location 
+ */
+typedef enum map_kind {
+	MAP_KIND_PER_CALL,  //The map should be init every time it is called
+  MAP_KIND_PER_LOCATION, //The map only need to be inited once for each location. Location is defined as either call_site or a call_path. This should be the default option since PER_CALL initialization would be too much overhead in many cases. 
+} map_kind_t;
+
 typedef enum mem_type {
 	MEM_TYPE_HOSTMEM,
 	MEM_TYPE_ACCMEM,
@@ -60,10 +68,11 @@ typedef struct data_map {
 	void * addr; //The memory address
 	size_t size;
 	access_kind_t accessKind;
+  map_type_t mapType;
+  map_kind_t mapKind;
 	mem_type_t memType;
 	int devId; //heterogeneous device id, -1 for CPU/host memory
 	callpath_key_t key;
-	map_type_t mapType;
 	struct data_map *src; //If mtype is shared or vshared, src points to the source data_map.
 
 	struct data_map * next; //The link list of maps of a function

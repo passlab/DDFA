@@ -135,31 +135,6 @@ void retrieve_callpath(callpath_key_t *cpk) {
   cpk->depth = backtrace(cpk->callpath, MAX_CALLPATH_DEPTH);
 }
 
-data_map_t *map_data(data_map_t *src, map_type_t mapType, char *symbol,
-                     void *addr, size_t size, access_kind_t accessKind,
-                     mem_type_t memType, int devId) {
-  data_map_t *map = &data_map_buffer[num_maps];
-  num_maps++;
-  map->symbol = symbol;
-  map->addr = addr;
-  map->size = size;
-  map->accessKind = accessKind;
-  map->devId = devId;
-  map->memType = memType;
-
-  map->src = src;
-  map->mapType = mapType;
-  // callpath_key_t callpath_key;
-
-  //attach_callpath(root, 2);
-  // attach the call path to the call graph
-
-  // attach the map to the call graph
-  // Assume top is the function that makes this map
-  map->next = top->data_maps;
-  top->data_maps = map; // XXX: Is there data racing in this situation??
-}
-
 // remove and return first item, move up all other items
 // needs manual deincrement of end
 call_t *dequeue(call_t *queue[], int end) {
@@ -177,20 +152,6 @@ call_t *dequeue(call_t *queue[], int end) {
 // add item at first empty slot
 // needs manual increment of end
 void enqueue(int end, call_t *queue[], call_t *node) { queue[end] = node; }
-
-data_map_t * init_callarg_meta(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, void * func) {
-	data_map_t * temp = map_data(src, mapType, symbol, addr, size, ACCESS_KIND_READ_ONLY, MEM_TYPE_HOSTMEM, 0);
-
-	top->next_callarg_meta = temp;
-	temp->argnext = NULL;
-}
-
-data_map_t * add_callarg_meta(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, void * func) {
-	data_map_t * temp = map_data(src, mapType, symbol, addr, size, ACCESS_KIND_READ_ONLY, MEM_TYPE_HOSTMEM, 0);
-
-	temp->argnext = top->next_callarg_meta;
-	top->next_callarg_meta = temp;
-}
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site) {
   // we can bootstrap here to create the very first node for call to main
