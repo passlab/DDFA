@@ -67,6 +67,7 @@ typedef struct data_map {
 	struct data_map *src; //If mtype is shared or vshared, src points to the source data_map.
 
 	struct data_map * next; //The link list of maps of a function
+	struct data_map * argnext; //The link list of maps of a function
 } data_map_t;
 
 typedef char * symbol_t;
@@ -81,12 +82,19 @@ typedef struct call {
 	volatile struct call * next; //The link list for the children (callees)
 
 	volatile data_map_t *data_maps; //The link list of data maps that are traced in this call
+
+	data_map_t * callarg_meta; //The call argument meta of the caller of this call
+
+	data_map_t * next_callarg_meta; //The cache to store the callarg_meta for the next callee. The callee node should store this pointer as soon as it can since it will be overwritten for the next call
 } call_t;
 
 /**
  *
  */
 data_map_t * map_data(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, access_kind_t accessKind, mem_type_t memType, int devId);
+data_map_t * init_callarg_meta(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, void * func);
+data_map_t * add_callarg_meta(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, void * func);
+
 call_t * attach_callpath(call_t * root, int runtime_depth) ;
 
 extern __thread int thread_id;

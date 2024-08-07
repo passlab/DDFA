@@ -78,12 +78,13 @@ call_t * attach_callpath(call_t * root, int runtime_depth) {
     unw_getcontext(&uc);
     unw_init_local(&cursor, &uc);
     int j = 0;
-    while (unw_step(&cursor) > 0 && j <= runtime_depth); //ignore runtime calls
+    while (unw_step(&cursor) > 0 && j <= runtime_depth) j++; //ignore runtime calls
 
     while (unw_step(&cursor) > 0) {
       unw_get_reg(&cursor, UNW_REG_IP, &ip);
       unw_get_proc_info(&cursor, &func_info);
       printf ("call_site = %lx, func = %lx\n", (long) ip, (long) func_info.start_ip);
+      if (func_info.start_ip == root.func) //search till the main func
       call_site[j] = (void *) ip;
       func[j] = (void *) func_info.start_ip;
       j++;
@@ -144,6 +145,20 @@ data_map_t * map_data(data_map_t * src, map_type_t mapType, char * symbol, void 
 	top->data_maps = map; //XXX: Is there data racing in this situation??
 }
 
+data_map_t * init_callarg_meta(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, void * func) {
+	data_map_t * temp = map_data(src, mapType, symbol, addr, size, ACCESS_KIND_READ_ONLY, MEM_TYPE_HOSTMEM, 0);
+
+	top->next_callarg_meta = temp;
+	temp->argnext = NULL;
+}
+
+data_map_t * add_callarg_meta(data_map_t * src, map_type_t mapType, char * symbol, void * addr, size_t size, void * func) {
+	data_map_t * temp = map_data(src, mapType, symbol, addr, size, ACCESS_KIND_READ_ONLY, MEM_TYPE_HOSTMEM, 0);
+
+	temp->argnext = top->next_callarg_meta;
+	top->next_callarg_meta = temp;
+}
+
 void __cyg_profile_func_enter(void *this_fn, void *call_site) {
   //we can bootstrap here to create the very first node for call to main
   if (top == NULL) {
@@ -178,7 +193,9 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site) {
 	  }
 	  temp->count ++;
 	  top = temp;
+	  temp->callarg_meta = top->next_callarg_meta;
   }
+
   //for pretty print
   int i;
   for (i=0; i<call_depth; i++) printf("  ");
