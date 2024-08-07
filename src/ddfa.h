@@ -5,51 +5,51 @@
 #include <stddef.h>
 
 typedef enum data_type {
-	DATA_TYPE_char,
-	DATA_TYPE_short, //signed
-	DATA_TYPE_int,   //signed
-	DATA_TYPE_long,   //signed
-	DATA_TYPE_float,
-	DATA_TYPE_double,
-	DATA_TYPE_uint32,
-	DATA_TYPE_uint64,
+    DATA_TYPE_char,
+    DATA_TYPE_short, //signed
+    DATA_TYPE_int,   //signed
+    DATA_TYPE_long,   //signed
+    DATA_TYPE_float,
+    DATA_TYPE_double,
+    DATA_TYPE_uint32,
+    DATA_TYPE_uint64,
 } data_type_t;
 
 typedef enum access_kind {
-	ACCESS_KIND_READ_ONLY,
-	ACCESS_KIND_WRITE_ONLY,
-	ACCESS_KIND_READ_WRITE,
+    ACCESS_KIND_READ_ONLY,
+    ACCESS_KIND_WRITE_ONLY,
+    ACCESS_KIND_READ_WRITE,
 } access_kind_t;
 
 typedef enum map_type {
-	MAP_TYPE_COPY,
-	MAP_TYPE_SHARED,
-	MAP_TYPE_VSHARED,
-	MAP_TYPE_FUNCARGCOPY, //Function call, copy
-	MAP_TYPE_INIT_CONST, //_INIT_* type are for the first time creation of a data element
+    MAP_TYPE_COPY,
+    MAP_TYPE_SHARED,
+    MAP_TYPE_VSHARED,
+    MAP_TYPE_FUNCARGCOPY, //Function call, copy
+    MAP_TYPE_INIT_CONST, //_INIT_* type are for the first time creation of a data element
 } map_type_t;
 
 /**
  * For specifying the kind of mapping, e.g. per call or per location 
  */
 typedef enum map_kind {
-	MAP_KIND_PER_CALL,  //The map should be init every time it is called
-  MAP_KIND_PER_LOCATION, //The map only need to be inited once for each location. Location is defined as either call_site or a call_path. This should be the default option since PER_CALL initialization would be too much overhead in many cases. 
+    MAP_KIND_PER_CALL,  //The map should be init every time it is called
+    MAP_KIND_PER_LOCATION, //The map only need to be inited once for each location. Location is defined as either call_site or a call_path. This should be the default option since PER_CALL initialization would be too much overhead in many cases.
 } map_kind_t;
 
 typedef enum mem_type {
-	MEM_TYPE_HOSTMEM,
-	MEM_TYPE_ACCMEM,
-	MEM_TYPE_STORAGE,
-	MEM_TYPE_IO,
+    MEM_TYPE_HOSTMEM,
+    MEM_TYPE_ACCMEM,
+    MEM_TYPE_STORAGE,
+    MEM_TYPE_IO,
 } mem_type_t;
 
 #define MAX_CALLPATH_DEPTH 32
 //This is used a key to uniquely identify a data or a data map
 typedef struct callpath_key {
-	int thread_id;
-	void * callpath[MAX_CALLPATH_DEPTH];
-	int depth;
+    int thread_id;
+    void * callpath[MAX_CALLPATH_DEPTH];
+    int depth;
 } callpath_key_t;
 
 /**
@@ -64,37 +64,37 @@ typedef struct callpath_key {
  * 4. function call (for pass by value and mapping of symbols)
  */
 typedef struct data_map {
-	char * symbol;
-	void * addr; //The memory address
-	size_t size;
-	access_kind_t accessKind;
+    char * symbol;
+    void * addr; //The memory address
+    size_t size;
+    access_kind_t accessKind;
   map_type_t mapType;
   map_kind_t mapKind;
-	mem_type_t memType;
-	int devId; //heterogeneous device id, -1 for CPU/host memory
-	callpath_key_t key;
-	struct data_map *src; //If mtype is shared or vshared, src points to the source data_map.
+    mem_type_t memType;
+    int devId; //heterogeneous device id, -1 for CPU/host memory
+    callpath_key_t key;
+    struct data_map *src; //If mtype is shared or vshared, src points to the source data_map.
 
-	struct data_map * next; //The link list of maps of a function
-	struct data_map * argnext; //The link list of maps of a function
+    struct data_map * next; //The link list of maps of a function
+    struct data_map * argnext; //The link list of maps of a function
 } data_map_t;
 
 typedef char * symbol_t;
 
 typedef struct call {
-	void * func;
-	void * call_site; //call_site is the address of the caller that makes call to this func
-	void * parent;
-	unsigned int count; //The call count in this call path
-	int tid; //The thread id
-	volatile struct call * child; //callee
-	volatile struct call * next; //The link list for the children (callees)
+    void * func;
+    void * call_site; //call_site is the address of the caller that makes call to this func
+    void * parent;
+    unsigned int count; //The call count in this call path
+    int tid; //The thread id
+    volatile struct call * child; //callee
+    volatile struct call * next; //The link list for the children (callees)
 
-	volatile data_map_t *data_maps; //The link list of data maps that are traced in this call
+    volatile data_map_t *data_maps; //The link list of data maps that are traced in this call
 
-	data_map_t * callarg_meta; //The call argument meta of the caller of this call
+    data_map_t * callarg_meta; //The call argument meta of the caller of this call
 
-	data_map_t * next_callarg_meta; //The cache to store the callarg_meta for the next callee. The callee node should store this pointer as soon as it can since it will be overwritten for the next call
+    data_map_t * next_callarg_meta; //The cache to store the callarg_meta for the next callee. The callee node should store this pointer as soon as it can since it will be overwritten for the next call
 } call_t;
 
 /**
