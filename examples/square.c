@@ -21,14 +21,14 @@ int main() {
 #pragma omp parallel for
   for (i = 0; i < 12; i++) {
     // printf("\nLOOP #%d\n", i);
-    init_callarg_meta(NULL, MAP_TYPE_INIT_CONST, "5", NULL, sizeof(int), &square);
+    //init_callarg_meta(NULL, MAP_TYPE_INIT_CONST, "5", NULL, sizeof(int), &square);
     square(5);
     if (i % 2 == 0) {
       square(6);
     }
     // const5 = map_data(NULL, MAP_TYPE_INIT_CONST, "5", NULL, sizeof(int),
     // ACCESS_KIND_READ_ONLY, MEM_TYPE_HOSTMEM, 0);
-    init_callarg_meta(NULL, MAP_TYPE_INIT_CONST, "5", NULL, sizeof(int), &square);
+    //init_callarg_meta(NULL, MAP_TYPE_INIT_CONST, "5", NULL, sizeof(int), &square);
     square(5); // Output: 25
   }
   return 0;

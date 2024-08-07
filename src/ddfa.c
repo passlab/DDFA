@@ -151,7 +151,7 @@ data_map_t *map_data(data_map_t *src, map_type_t mapType, char *symbol,
   map->mapType = mapType;
   // callpath_key_t callpath_key;
 
-  attach_callpath(root, 2);
+  //attach_callpath(root, 2);
   // attach the call path to the call graph
 
   // attach the map to the call graph
