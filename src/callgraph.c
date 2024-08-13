@@ -254,6 +254,9 @@ void printnode(call_t *node) {
 }
 
 void dump_callgraph() {
+//colors array to differentiate thread ids
+  char *colors[6] = {"#FF0000", "#FF7F50", "#FFFF00", "#00FF00", "#0000FF", "#00FFFF"};
+
   // DOT/GraphML implementation
   call_t *parent;
   call_t *child;
@@ -285,40 +288,14 @@ void dump_callgraph() {
 
   fprintf(graphml_file, "\t<graph id=\"G\" edgedefault=\"directed\">\n");
 
-  // Add mains to graph by extracting from root nodes for each tid
-  // Main, Node IDs, Edge IDs, and Edge sources/targets are tagged with corresponding tid
-
-  // for (int x = 0; x < end; x++){
-  //   call_t *node = queue[x];
-
-    // Node ID
-    // Nodes are the functions themselves extracted from edges
-    // Some have duplicates
-    // Differentiate by callsite
-    // fprintf(graphml_file, "\t\t<node id=\"%p-%d-%p\">\n", node->func, node->tid, node->call_site);
-    // fprintf(graphml_file, "\t\t\t<data key=\"d0\">\n");
-    // fprintf(graphml_file, "\t\t\t\t<y:ShapeNode>\n");
-    // // Node Size
-    // fprintf(graphml_file, "\t\t\t\t\t<y:Geometry x=\"170.5\" y=\"-15.0\" " "width=\"400.0\" height=\"30.0\"/>\n");
-    // fprintf(graphml_file, "\t\t\t\t\t<y:Fill color=\"#CCCCFF\" transparent=\"false\"/>\n");
-    // fprintf(graphml_file, "\t\t\t\t\t<y:BorderStyle type=\"line\" width=\"1.0\" " "color=\"#000000\"/>\n");
-    // //Node Label
-    // fprintf(graphml_file, "\t\t\t\t\t<y:NodeLabel>%p-%d-%p</y:NodeLabel>\n", node->func, node->tid, node->call_site);
-    // fprintf(graphml_file, "\t\t\t\t\t<y:Shape type=\"rectangle\"/>\n");
-    // //Closing tags
-    // fprintf(graphml_file, "\t\t\t\t</y:ShapeNode>\n");
-    // fprintf(graphml_file, "\t\t\t</data>\n");
-    // fprintf(graphml_file, "\t\t</node>\n");
-
-  //}
-
   while ((parent = dequeue(queue, end)) != NULL) {
+    // Node ID
     fprintf(graphml_file, "\t\t<node id=\"%p-%d-%p\">\n", parent->func, parent->tid, parent->call_site);
     fprintf(graphml_file, "\t\t\t<data key=\"d0\">\n");
     fprintf(graphml_file, "\t\t\t\t<y:ShapeNode>\n");
     // Node Size
     fprintf(graphml_file, "\t\t\t\t\t<y:Geometry x=\"170.5\" y=\"-15.0\" " "width=\"400.0\" height=\"30.0\"/>\n");
-    fprintf(graphml_file, "\t\t\t\t\t<y:Fill color=\"#CCCCFF\" transparent=\"false\"/>\n");
+    fprintf(graphml_file, "\t\t\t\t\t<y:Fill color=\"%s\" transparent=\"false\"/>\n", colors[parent->tid]);
     fprintf(graphml_file, "\t\t\t\t\t<y:BorderStyle type=\"line\" width=\"1.0\" " "color=\"#000000\"/>\n");
     //Node Label
     fprintf(graphml_file, "\t\t\t\t\t<y:NodeLabel>%p-%d-%p</y:NodeLabel>\n", parent->func, parent->tid, parent->call_site);
@@ -328,15 +305,11 @@ void dump_callgraph() {
     fprintf(graphml_file, "\t\t\t</data>\n");
     fprintf(graphml_file, "\t\t</node>\n");
 
-
     end--;
 
     child = parent->child;
     while (child != NULL) {
       // Add child node
-
-      // create callpath from parent callsites
-      // TODO, id by callpath and thread id
 
       // Node ID
       fprintf(graphml_file, "\t\t<node id=\"%p-%d-%p\">\n", child->func, child->tid, child->call_site);
@@ -344,7 +317,7 @@ void dump_callgraph() {
       fprintf(graphml_file, "\t\t\t\t<y:ShapeNode>\n");
       // Node size
       fprintf(graphml_file, "\t\t\t\t\t<y:Geometry x=\"170.5\" y=\"-15.0\" " "width=\"300.0\" height=\"30.0\"/>\n");
-      fprintf(graphml_file, "\t\t\t\t\t<y:Fill color=\"#CCCCFF\" transparent=\"false\"/>\n");
+      fprintf(graphml_file, "\t\t\t\t\t<y:Fill color=\"%s\" transparent=\"false\"/>\n", colors[child->tid]);
       fprintf(graphml_file, "\t\t\t\t\t<y:BorderStyle type=\"line\" " "width=\"1.0\" color=\"#000000\"/>\n");
       // Label with function pointer
       fprintf(graphml_file, "\t\t\t\t\t<y:NodeLabel>%p-%d-%p</y:NodeLabel>\n", child->func, child->tid, child->call_site);
