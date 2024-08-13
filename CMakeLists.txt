@@ -14,6 +14,11 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/ddfa_config.h.cmake "${CMAKE_CURR
 set(SOURCE_FILES
     src/ddfa.h
     src/ddfa.c
+    src/datamap.h
+    src/datamap.c
+    src/callgraph.h
+    src/callgraph.c
+    src/basicdef.h
     src/ddfa_config.h
 )
 
@@ -24,6 +29,9 @@ target_link_libraries(ddfa m)
 install(FILES
         ${CMAKE_CURRENT_BINARY_DIR}/src/ddfa_config.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/ddfa.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/basicdef.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/datamap.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/callgraph.h
         DESTINATION include)
 
 install(TARGETS ddfa
