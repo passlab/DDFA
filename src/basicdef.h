@@ -16,6 +16,5 @@ typedef enum trace_kind {
 //void before_main () __attribute__((constructor));
 void before_main () ;
 void after_main () __attribute__((destructor));
-extern int main(int argc, char * argv[]);
 
 #endif

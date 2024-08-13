@@ -196,6 +196,8 @@ void retrieve_callpath(callpath_key_t *cpk) {
   cpk->depth = backtrace(cpk->callpath, MAX_CALLPATH_DEPTH);
 }
 
+extern int main(int argc, char * argv[]);
+
 void init_before_main() {
   // root = add_new_call_node(NULL, &main, &before_main);
 

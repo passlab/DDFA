@@ -42,7 +42,7 @@ void __cyg_profile_func_enter(void *this_fn, void *call_site)
 void __cyg_profile_func_exit(void *this_fn, void *call_site)
                              __attribute__((no_instrument_function));
 
-void init_before_main() ;
-void dump_callgraph();
+extern void init_before_main() ;
+extern void dump_callgraph();
 
 #endif
