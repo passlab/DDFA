@@ -48,19 +48,24 @@ typedef enum mem_type {
  * 3. OpenMP directives that use map clause, shared or private clause, i.e.
  *     when a new data environment is created for a task/thread/offloading region
  * 4. function call (for pass by value and mapping of symbols)
+
+ About tracing data map, the design will allow users to 
+ 1. To specify which map to be traced
  */
 typedef struct data_map {
     char * symbol;
     void * addr; //The memory address
     size_t size;
     access_kind_t accessKind;
-  map_type_t mapType;
-  trace_kind_t traceKind;
-  int refcount;
+    map_type_t mapType;
+    trace_kind_t traceKind;
     mem_type_t memType;
     int devId; //heterogeneous device id, -1 for CPU/host memory
-    struct callpath_key *key;
     struct data_map *src; //If mtype is shared or vshared, src points to the source data_map.
+  
+    struct callpath_key *key; //Uniquely identify the location of this map
+    int index; //local index if there is multiple maps at the same location, e.g. function call argument
+    int count;
 
     struct data_map * next; //The link list of maps of a function
     struct data_map * argnext; //The link list of maps of a function
