@@ -22,9 +22,9 @@ typedef struct call {
 
     volatile struct data_map *data_maps; //The link list of data maps that are traced in this call
 
-    struct data_map * callarg_meta; //The call argument meta of the caller of this call
+    struct data_map * callarg_maps; //The call argument meta of the caller of this call
 
-    struct data_map * next_callarg_meta; //The cache to store the callarg_meta for the next callee. The callee node should store this pointer as soon as it can since it will be overwritten for the next call
+    struct data_map * next_callarg_maps; //The cache to store the callarg_meta for the next callee. The callee node should store this pointer as soon as it can since it will be overwritten for the next call
 } call_t;
 
 
