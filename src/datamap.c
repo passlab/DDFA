@@ -4,6 +4,24 @@ __thread data_map_t data_map_buffer[DATA_MAP_BUFFER_SIZE];
 __thread int num_maps;
 symbol_t sym_table[SYMBOL_TABLE_SIZE];
 
+__thread data_map_t *data_map_head[64]; //heads of data maps of each categories.
+
+void link_data_map(int linkIndex, data_map_t * map) {
+	data_map_t * head = data_map_head[linkIndex];
+	if (head == NULL) {
+		map->map_links[linkIndex].next = map;
+		map->map_links[linkIndex].prev = map;
+		data_map_head[linkIndex] = map;
+	} else { //append to the double link list
+		data_map_t * last = head->prev;
+		last->next = map;
+		map->prev = last;
+
+		map->next = head;
+		head->prev = map;
+	}
+}
+
 /**
  *
  * @param index: the index of the argument in a function call

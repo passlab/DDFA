@@ -21,17 +21,6 @@
  1. To specify which map to be traced
  */
 
-typedef enum data_type {
-    DATA_TYPE_char,
-    DATA_TYPE_short, //signed
-    DATA_TYPE_int,   //signed
-    DATA_TYPE_long,   //signed
-    DATA_TYPE_float,
-    DATA_TYPE_double,
-    DATA_TYPE_uint32,
-    DATA_TYPE_uint64,
-} data_type_t;
-
 typedef enum access_kind { 
     ACCESS_KIND_READ_ONLY,
     ACCESS_KIND_WRITE_ONLY,
@@ -79,35 +68,40 @@ typedef enum map_link_index {
     MAPLINKINDEX_map_type,
     MAPLINKINDEX_map_class,
     MAPLINKINDEX_mem_type,
+
     MAPLINKINDEX_addr,
     MAPLINKINDEX_devId,
+    MAPLINKINDEX_threadId,
     MAPLINKINDEX_src,
     MAPLINKINDEX_location,
     MAPLINKINDEX_NUMLINKS, //Must be the last one
 };
 
 typedef struct data_map {
-    //map information/property
+    //map information/property. They are used for index in the map_link
     struct data_map *src; //If mtype is shared or vshared, src points to the source data_map.
-    char * symbol;
     void * addr; //The memory address
-    size_t size;
     int devId; //heterogeneous device id, -1 for CPU/host memory
-    struct data_map *src; //If mtype is shared or vshared, src points to the source data_map.
     struct callpath_key *location; //Uniquely identify the location of this map
+    int threadId;
+
+    size_t size;
+    char * symbol;
     int index; //local index if there is multiple maps at the same location, e.g. function call argument
 
-    //map attribute
+    //map attribute. They are used for index in the map_link
     access_kind_t accessKind;
     map_type_t mapType;
-    trace_kind_t traceKind;
+    map_class_t mapClass;
     mem_type_t memType;
+
+    trace_kind_t traceKind;
 
     //book-keeping updated at runtime
     int count;
 
-    //map links are used to link maps of the same type/class/kind/function/trace_kind;
-    //In this way, we have a cross-link such that maps can be effiencelty find and organized
+    //map double-link links are used to index maps of the same type/class/kind/function/trace_kind/thread;
+    //In this way, we have a cross-link such that maps can be efficiently found
     struct map_link {
         struct data_map * next;
         struct data_map * prev;
