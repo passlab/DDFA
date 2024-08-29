@@ -122,7 +122,7 @@ extern __thread data_map_t data_map_buffer[];
 extern __thread int num_maps;
 extern symbol_t sym_table[];
 
-extern data_map_t *map_data(data_map_t *src, char *symbol, void *addr, size_t size, int devId, int index, 
+extern data_map_t *map_data(data_map_t *src, char *symbol, void *addr, size_t size, int devId,  
      access_kind_t accessKind, map_type_t mapType, trace_kind_t traceKind, mem_type_t memType,  int count);
 extern void func_arg_map (void * fp, data_map_t * argMap, int index);
 
