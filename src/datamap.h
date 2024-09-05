@@ -21,22 +21,20 @@
  1. To specify which map to be traced
  */
 
-typedef enum access_kind { 
+typedef enum data_map_attr {  
+    //access kind
     ACCESS_KIND_READ_ONLY,
     ACCESS_KIND_WRITE_ONLY,
     ACCESS_KIND_READ_WRITE,
     ACCESS_KIND_UNKNOWN,
-} access_kind_t;
-
-typedef enum map_type { //sharing kind
+    //map type
     MAP_TYPE_COPY,
     MAP_TYPE_SHARED,
     MAP_TYPE_VSHARED,
-    MAP_TYPE_FUNCARGCOPY, //Function call, copy
     MAP_TYPE_INIT_CONST, //_INIT_* type are for the first time creation of a data element
-} map_type_t;
-
-typedef enum map_class {
+    MAP_TYPE_INIT_VAR,  // init type for the first time creation of a map from a var
+    MAP_TYPE_INIT,
+    //map class
     MAP_CLASS_DECL,  //variable/array declaration
     MAP_CLASS_malloc,
     MAP_CLASS_mmap,
@@ -52,18 +50,21 @@ typedef enum map_class {
     MAP_CLASS_OMP_MAP_TOFROM,
     MAP_CLASS_OMP_SHARED,
     MAP_CLASS_OMP_PRIVATE,
-} map_class_t;
-
-typedef enum mem_type {
+    MAP_CLASS_FUNCCALL,
+    //mem type
     MEM_TYPE_HOSTMEM,
     MEM_TYPE_ACCMEM,
     MEM_TYPE_STORAGE,
     MEM_TYPE_IO,
-} mem_type_t;
+} data_map_attr_t;
+
+typedef int access_kind_t;
+typedef int map_type_t;
+typedef int map_class_t;
+typedef int mem_type_t;
 
 //constant from 0 - .. for indexing the map_links 
 typedef enum map_link_index {
-    MAPLINKINDEX_trace_kind,
     MAPLINKINDEX_acces_kind,
     MAPLINKINDEX_map_type,
     MAPLINKINDEX_map_class,
@@ -100,7 +101,7 @@ typedef struct data_map {
     //book-keeping updated at runtime
     int count;
 
-    //map double-link links are used to index maps of the same type/class/kind/function/trace_kind/thread;
+    //map double-link lists are used to index maps of the same type/class/kind/function/trace_kind/thread;
     //In this way, we have a cross-link such that maps can be efficiently found
     struct map_link {
         struct data_map * next;
@@ -117,7 +118,7 @@ extern __thread int num_maps;
 extern symbol_t sym_table[];
 
 extern data_map_t *map_data(data_map_t *src, char *symbol, void *addr, size_t size, int devId,  
-     access_kind_t accessKind, map_type_t mapType, trace_kind_t traceKind, mem_type_t memType,  int count);
+     access_kind_t accessKind, map_type_t mapType, map_class_t mapClass, mem_type_t memType,  trace_kind_t traceKind, int count);
 extern void func_arg_map (void * fp, data_map_t * argMap, int index);
 
 /**

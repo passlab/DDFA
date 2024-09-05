@@ -4,20 +4,25 @@ __thread data_map_t data_map_buffer[DATA_MAP_BUFFER_SIZE];
 __thread int num_maps;
 symbol_t sym_table[SYMBOL_TABLE_SIZE];
 
-__thread data_map_t *data_map_head[64]; //heads of data maps of each categories.
+__thread struct data_map_link_head {
+  int map_attr_type;
+  void * attr;
+  data_map_t * next;
+  data_map_t * prev;
+} data_map_link_head[64]; //heads of data maps of each categories.
 
 void link_data_map(int linkIndex, data_map_t * map) {
-	data_map_t * head = data_map_head[linkIndex];
-	if (head == NULL) {
+	struct data_map_link_head  * head = &data_map_link_head[linkIndex];
+	if (head->next == NULL) {
 		map->map_links[linkIndex].next = map;
 		map->map_links[linkIndex].prev = map;
-		data_map_head[linkIndex] = map;
+		head->next = head->prev = map;
 	} else { //append to the double link list
 		data_map_t * last = head->prev;
 		last->next = map;
-		map->prev = last;
+		map->map_links[linkIndex].prev = last;
 
-		map->next = head;
+		map->map_links[linkIndex].next = head;
 		head->prev = map;
 	}
 }
