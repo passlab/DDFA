@@ -52,3 +52,25 @@ int main()
 
     return 0;
 }
+
+int foo(int * dest, int * src, int size) {
+    data_map_t * destParaMap = map_data(NULL, "dest", &dest, sizeof(int*), 0, 0, 
+     ACCESS_KIND_UNKNOWN, MAP_TYPE_FUNCARGCOPY, TRACE_KIND_PER_CALLPATH, MEM_TYPE_HOSTMEM,  0);
+    func_para_map(&foo, destParaMap, 0);
+     data_map_t * srcParaMap = map_data(NULL, "src", &src, sizeof(int*), 0, 0, 
+     ACCESS_KIND_UNKNOWN, MAP_TYPE_FUNCARGCOPY, TRACE_KIND_PER_CALLPATH, MEM_TYPE_HOSTMEM,  0);
+    func_para_map(&foo, srcParaMap, 0);
+
+
+    memcpy(dest, src, sizeof(int) * size);
+    
+    data_map_t * destMap = map_data(NULL, "dest", dest, sizeof(int)*size, 0, 0, 
+        ACCESS_KIND_UNKNOWN, MAP_TYPE_INIT, MAP_CLASS_PTRVAR, MEM_TYPE_HOSTMEM, TRACE_KIND_PER_CALLPATH,  0);
+    map_reference(destMap, destParaMap);
+    data_map_t * srcMap = map_data(NULL, "src", src, sizeof(int)*size, 0, 0, 
+        ACCESS_KIND_UNKNOWN, MAP_TYPE_INIT, MAP_CLASS_PTRVAR, MEM_TYPE_HOSTMEM, TRACE_KIND_PER_CALLPATH,  0);
+    map_reference(srcMap, srcParaMap);
+
+    link_map(destMap, srcMap);
+
+}

@@ -14,15 +14,20 @@ typedef struct callpath_key {
 typedef struct call {
     void * func;
     void * call_site; //call_site is the address of the caller that makes call to this func
-    void * parent;
+    struct call * parent;
     unsigned int count; //The call count in this call path
     int tid; //The thread id
     volatile struct call * child; //callee
     volatile struct call * next; //The link list for the children (callees)
 
-    volatile struct data_map *data_maps; //The link list of data maps that are traced in this call
+    volatile struct data_info *data_infos; //The head of the link list of data_info that are created in this call
+    volatile struct data_map  *data_maps; //data maps created within this function
+    volatile struct data_info * arg_infos; //data maps for arguments
+    volatile struct data_map * arg_maps; //args maps
 
-    struct data_map * callarg_maps; //The call argument meta of the caller of this call
+    struct data_info * temp_info; //The head of the linked-list that is using next2 pointer and index of the data_info_t, e.g. the data_info for the arguments of a callee
+                                  //This is temporary since when the callee finishes mapping the argument data info with its parameter info, this temp_info will be reset to NULL
+                                  //and to be used for the next function call. 
 
     struct data_map * next_callarg_maps; //The cache to store the callarg_meta for the next callee. The callee node should store this pointer as soon as it can since it will be overwritten for the next call
 } call_t;
