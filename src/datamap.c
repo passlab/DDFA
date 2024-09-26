@@ -1,9 +1,9 @@
 #include "ddfa.h"
 
-__thread data_map_t data_info_buffer[DATA_MAP_BUFFER_SIZE];
+__thread data_info_t data_info_buffer[DATA_MAP_BUFFER_SIZE];
 __thread data_map_t data_map_buffer[DATA_MAP_BUFFER_SIZE];
-__thread int num_maps;
-__thread int num_data_infos;
+__thread int num_maps=0;
+__thread int num_data_infos=0;
 symbol_t sym_table[SYMBOL_TABLE_SIZE];
 
 __thread struct data_map_attr_link_head {
@@ -46,7 +46,7 @@ data_info_t *init_data_info(char *symbol, void *addr, size_t size, int devId, da
   //If created, check the traceKind to see whether a new map should be created. With full tracing of every call, the count should be different. 
   //So a data map can be uniquely identified as key:index:count
 
-  data_info_t *info = &data_info_buffer[num_maps];
+  data_info_t *info = &data_info_buffer[num_data_infos];
   num_data_infos++;
   info->symbol = symbol;
   info->addr = addr;
@@ -111,7 +111,6 @@ data_map_t * map_funccall_argu(void * func, data_info_t * para, int index) {
   while (arg_info != NULL) {
     if (arg_info->reference == func && arg_info->index == index) { //find the argument
       data_map_t * map = map_data(para, arg_info, MAP_TYPE_COPY, MAP_CLASS_FUNCPARA, arg_info->traceKind, arg_info->count);
-      printf("arg-para mapped");
 
       //add to the arg_maps of the call
       map->next2 = top->arg_maps;
